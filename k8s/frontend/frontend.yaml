@@ -1,0 +1,89 @@
+# ============================================================
+# Kubernetes Frontend Angular — Deployment + Service
+# Registro MRI — FEMSA Salud CSIRT
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mri-frontend
+  namespace: registro-mri
+  labels:
+    app: mri-frontend
+    app.kubernetes.io/name: registro-mri
+    component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mri-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: mri-frontend
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [mri-frontend]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: frontend
+          image: your-registry/registro-mri-frontend:latest
+          # En AWS ECR: image: 123456789.dkr.ecr.us-east-1.amazonaws.com/registro-mri-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      securityContext:
+        runAsNonRoot: false  # Nginx necesita root para el proceso maestro
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mri-frontend-service
+  namespace: registro-mri
+  labels:
+    app: mri-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: mri-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http

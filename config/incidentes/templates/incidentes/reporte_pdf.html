@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* ==========================================
+           CONFIGURACIÓN DE PÁGINA Y MARCOS (XHTML2PDF)
+           ========================================== */
+        @page {
+            size: letter;
+            margin-top: 3.5cm;
+            margin-bottom: 2.5cm;
+            margin-left: 1.5cm;
+            margin-right: 1.5cm;
+            
+            /* Marco estático para el Encabezado en todas las páginas */
+            @frame header_frame {
+                -pdf-frame-content: header_content;
+                top: 1cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+                height: 2.5cm;
+            }
+            
+            /* Marco estático para el Pie de página */
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                bottom: 1cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+                height: 1cm;
+            }
+        }
+
+        /* ==========================================
+           TIPOGRAFÍA Y ESTILOS BASE
+           ========================================== */
+        body { 
+            font-family: Helvetica, Arial, sans-serif; 
+            font-size: 10pt; 
+            color: #333333; 
+        }
+        
+        h2 { 
+            color: #004b87; 
+            border-bottom: 1.5px solid #004b87; 
+            padding-bottom: 3px; 
+            margin-top: 25px; 
+            font-size: 12pt; 
+            text-transform: uppercase;
+        }
+
+        /* ==========================================
+           ESTILOS DE TABLAS
+           ========================================== */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 15px; 
+        }
+        
+        th { 
+            background-color: #004b87; 
+            color: #ffffff; 
+            padding: 7px; 
+            text-align: left; 
+            font-size: 9pt; 
+            font-weight: bold;
+        }
+        
+        td { 
+            border-bottom: 1px solid #dddddd; 
+            padding: 7px; 
+            font-size: 9pt; 
+            vertical-align: top;
+        }
+
+        .table-alt-row td { background-color: #f9f9f9; }
+        
+        .box-info td { border: 1px solid #004b87; }
+        .box-info th { border: 1px solid #004b87; }
+
+        /* ==========================================
+           SEMÁFOROS DE SEVERIDAD Y TLP
+           ========================================== */
+        .badge { color: white; font-weight: bold; }
+        .sev-BAJA { color: #28a745; font-weight: bold; }
+        .sev-MEDIA { color: #ffc107; font-weight: bold; }
+        .sev-ALTA { color: #fd7e14; font-weight: bold; }
+        .sev-CRITICA { color: #dc3545; font-weight: bold; }
+
+        .tlp-box { border: 1px solid #333; text-align: center; padding: 5px; font-weight: bold; font-size: 9pt; }
+        .tlp-WHITE { background-color: #ffffff; color: #000000; }
+        .tlp-GREEN { background-color: #28a745; color: #ffffff; }
+        .tlp-AMBER { background-color: #ffc107; color: #000000; }
+        .tlp-RED { background-color: #dc3545; color: #ffffff; }
+
+    </style>
+</head>
+<body>
+
+    <div id="header_content">
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="width: 70%; border: none; padding: 0;">
+                    <h1 style="color: #004b87; font-size: 16pt; margin: 0; padding: 0;">REPORTE EJECUTIVO DE INCIDENTE</h1>
+                    <p style="color: #555555; font-size: 10pt; margin: 2px 0 0 0;">CSIRT FEMSA Salud - Centro de Operaciones de Seguridad</p>
+                </td>
+                <td style="width: 30%; border: none; padding: 0; text-align: right;">
+                    <div class="tlp-box tlp-{{ incidente.tlp }}">
+                        Clasificación TLP:<br> {{ incidente.get_tlp_display }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <hr style="border: 0; border-bottom: 2px solid #004b87; margin-top: 10px;">
+    </div>
+
+    <div id="footer_content">
+        <hr style="border: 0; border-top: 1px solid #dddddd; margin-bottom: 5px;">
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="width: 33%; border: none; font-size: 8pt; color: #888888; text-align: left;">
+                    Generado: {% now "d/m/Y H:i" %}
+                </td>
+                <td style="width: 34%; border: none; font-size: 8pt; color: #dc3545; text-align: center; font-weight: bold;">
+                    DOCUMENTO ESTRICTAMENTE CONFIDENCIAL
+                </td>
+                <td style="width: 33%; border: none; font-size: 8pt; color: #888888; text-align: right;">
+                    Página <pdf:pagenumber> de <pdf:pagecount>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h2>1. Resumen Ejecutivo y Triage</h2>
+    <table class="box-info">
+        <tr>
+            <th style="width: 20%;">ID de Ticket</th>
+            <td style="width: 30%;"><strong>{{ incidente.codigo }}</strong></td>
+            <th style="width: 20%;">Fecha de Detección</th>
+            <td style="width: 30%;">{{ incidente.fecha_deteccion|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <th>Título Principal</th>
+            <td colspan="3">{{ incidente.titulo }}</td>
+        </tr>
+        <tr>
+            <th>Categoría (Vector)</th>
+            <td>{{ incidente.get_tipo_ataque_display }}</td>
+            <th>Triada Afectada</th>
+            <td>{{ incidente.get_objetivo_afectado_display|default:"No definido" }}</td>
+        </tr>
+        <tr>
+            <th>Nivel de Severidad</th>
+            <td class="sev-{{ incidente.severidad }}">{{ incidente.get_severidad_display }}</td>
+            <th>Estado Actual</th>
+            <td><strong>{{ incidente.get_estado_display }}</strong></td>
+        </tr>
+        <tr>
+            <th>Responsable (Líder)</th>
+            <td>{{ incidente.lider_incidente.get_full_name|default:incidente.lider_incidente.username|default:"No asignado"|upper }}</td>
+            <th>Fecha de Cierre</th>
+            <td>{{ incidente.fecha_cierre|date:"d/m/Y H:i"|default:"-- En Curso --" }}</td>
+        </tr>
+    </table>
+
+    <h2>2. Narrativa Técnica Inicial</h2>
+    <div style="background-color: #f4f4f4; padding: 10px; border-radius: 4px; border-left: 3px solid #004b87; margin-bottom: 15px;">
+        <p style="margin: 0; text-align: justify;">
+            {{ incidente.descripcion_inicial|linebreaksbr|default:"Sin descripción inicial registrada." }}
+        </p>
+    </div>
+
+    {% if activos %}
+    <h2>3. Inventario de Activos Comprometidos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25%;">Hostname / Activo</th>
+                <th style="width: 20%;">Dirección IP</th>
+                <th style="width: 25%;">Sistema Operativo</th>
+                <th style="width: 30%;">Acción de Contención</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for activo in activos %}
+            <tr class="{% cycle 'table-alt-row' '' %}">
+                <td><strong>{{ activo.nombre_host }}</strong></td>
+                <td>{{ activo.ip_address|default:"N/A" }}</td>
+                <td>{{ activo.get_sistema_operativo_display|default:activo.sistema_operativo }}</td>
+                <td>{{ activo.get_accion_tomada_display|default:activo.accion_tomada }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <h2>4. Cadena de Actividad (Bitácora Oficial)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%;">Fecha y Hora</th>
+                <th style="width: 65%;">Detalle de Acción / Tarea Realizada</th>
+                <th style="width: 20%;">Especialista</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in bitacora %}
+            <tr class="{% cycle 'table-alt-row' '' %}">
+                <td style="color: #555;">{{ log.fecha_hora|date:"d/m/Y H:i" }}</td>
+                <td style="text-align: justify;">{{ log.actividad|linebreaksbr }}</td>
+                <td>{{ log.responsable.username|default:"Sistema"|upper }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" style="text-align: center; color: #888; padding: 15px;">No se han registrado acciones en la bitácora de este incidente.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if leccion and incidente.estado == 'CERRADO' %}
+    <pdf:nextpage />
+    
+    <h2>5. Reporte Post-Mortem y Mejora Continua</h2>
+    <table class="box-info">
+        <tr>
+            <th colspan="2" style="text-align: center; background-color: #343a40;">ANÁLISIS DE CAUSA RAÍZ (RCA)</th>
+        </tr>
+        <tr>
+            <td colspan="2" style="background-color: #fff; padding: 10px;"><strong>Problema principal: </strong> {{ leccion.causa_raiz|default:"No documentado" }}</td>
+        </tr>
+        <tr>
+            <th style="width: 50%; background-color: #28a745;">¿Qué funcionó bien? (Aciertos)</th>
+            <th style="width: 50%; background-color: #dc3545;">¿Qué falló? (Oportunidades)</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px;">{{ leccion.que_funciono|linebreaksbr|default:"-" }}</td>
+            <td style="padding: 10px;">{{ leccion.que_fallo|linebreaksbr|default:"-" }}</td>
+        </tr>
+        <tr>
+            <th colspan="2" style="background-color: #004b87;">Plan de Acción y Mejoras Propuestas</th>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding: 10px;">{{ leccion.mejoras_propuestas|linebreaksbr|default:"-" }}</td>
+        </tr>
+    </table>
+    {% endif %}
+
+</body>
+</html>

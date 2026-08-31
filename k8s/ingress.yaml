@@ -1,0 +1,103 @@
+# ============================================================
+# Kubernetes Ingress — NGINX Ingress Controller
+# Registro MRI — FEMSA Salud CSIRT
+# Preparado para local (HTTP) y AWS (HTTPS con ACM)
+# ============================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mri-ingress
+  namespace: registro-mri
+  labels:
+    app.kubernetes.io/name: registro-mri
+  annotations:
+    # ─── NGINX Ingress Controller ─────────────────────────
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+
+    # ─── Rate Limiting ────────────────────────────────────
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+    # ─── CORS (si se maneja en el Ingress en vez del backend) ─
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "https://mri.femsasalud.com"
+
+    # ─── AWS ALB (Descomentar para AWS EKS con ALB Controller) ─
+    # kubernetes.io/ingress.class: "alb"
+    # alb.ingress.kubernetes.io/scheme: "internet-facing"  # o "internal"
+    # alb.ingress.kubernetes.io/target-type: "ip"
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID"
+    # alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    # alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type":"redirect","RedirectConfig":{"Protocol":"HTTPS","Port":"443","StatusCode":"HTTP_301"}}'
+    # alb.ingress.kubernetes.io/healthcheck-path: "/health"
+    # alb.ingress.kubernetes.io/group.name: "registro-mri"
+spec:
+  ingressClassName: nginx  # Para local con NGINX Ingress Controller
+  # ingressClassName: alb    # Para AWS EKS con ALB Controller
+  tls:
+    - hosts:
+        - mri.femsasalud.com
+        - localhost
+      secretName: mri-tls-secret  # Certificado TLS (usar cert-manager en AWS)
+  rules:
+    # ─── Regla para dominio de producción ─────────────────
+    - host: mri.femsasalud.com
+      http:
+        paths:
+          # API Backend
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mri-backend-service
+                port:
+                  number: 3000
+          # Archivos subidos
+          - path: /uploads(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mri-backend-service
+                port:
+                  number: 3000
+          # Frontend (catch-all)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mri-frontend-service
+                port:
+                  number: 80
+
+    # ─── Regla para localhost (desarrollo con K8s local) ──
+    - host: localhost
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mri-backend-service
+                port:
+                  number: 3000
+          - path: /uploads(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mri-backend-service
+                port:
+                  number: 3000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mri-frontend-service
+                port:
+                  number: 80

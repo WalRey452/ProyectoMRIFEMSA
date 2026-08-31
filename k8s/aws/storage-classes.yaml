@@ -1,0 +1,80 @@
+# ============================================================
+# AWS EKS — StorageClasses para EBS (gp3) y EFS
+# Registro MRI — FEMSA Salud CSIRT
+# ============================================================
+# PRERREQUISITOS AWS:
+# 1. Instalar AWS EBS CSI Driver: https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html
+# 2. Instalar AWS EFS CSI Driver: https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html
+# 3. Crear un EFS File System en AWS y anotar el ID (fs-XXXXXXXX)
+
+# ─── StorageClass EBS gp3 (para PostgreSQL) ─────────────────
+# Usar en lugar de "standard" en postgres.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"  # Siempre cifrar en reposo
+  # kmsKeyId: "arn:aws:kms:us-east-1:ACCOUNT:key/KEY-ID"  # Opcional: CMK
+reclaimPolicy: Retain  # No borrar el volumen si el PVC se elimina
+volumeBindingMode: WaitForFirstConsumer  # Crear en la misma AZ que el pod
+allowVolumeExpansion: true
+
+---
+# ─── StorageClass EFS (para uploads — ReadWriteMany) ─────────
+# EFS permite múltiples pods acceder al mismo volumen simultáneamente
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: fs-XXXXXXXX  # ⚠️ Cambiar por el ID real de tu EFS
+  directoryPerms: "700"
+  gidRangeStart: "1000"
+  gidRangeEnd: "2000"
+  basePath: "/registro-mri"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+
+---
+# ============================================================
+# Notas para migración a AWS EKS
+# ============================================================
+# 1. Cambiar en postgres.yaml:
+#      storageClassName: standard → storageClassName: gp3
+#
+# 2. Cambiar en backend.yaml:
+#      storageClassName: standard → storageClassName: efs-sc
+#      accessModes: ReadWriteMany (ya configurado)
+#
+# 3. En ingress.yaml, comentar sección nginx y descomentar ALB:
+#      ingressClassName: nginx → ingressClassName: alb
+#
+# 4. Actualizar images con ECR:
+#      image: 123456789.dkr.ecr.us-east-1.amazonaws.com/registro-mri-backend:latest
+#      image: 123456789.dkr.ecr.us-east-1.amazonaws.com/registro-mri-frontend:latest
+#
+# 5. Usar AWS RDS para PostgreSQL en lugar del StatefulSet:
+#      - Crear RDS PostgreSQL 16 en VPC privada
+#      - Actualizar DB_HOST en configmap.yaml con el endpoint de RDS
+#      - Eliminar postgres.yaml del cluster
+#
+# 6. Usar AWS ElastiCache (Redis) en lugar del Deployment de Redis:
+#      - Crear cluster Redis en VPC privada
+#      - Actualizar REDIS_HOST en configmap.yaml
+#      - Eliminar redis.yaml del cluster
+#
+# 7. Cert-Manager para TLS automático con ACM:
+#      kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.3/cert-manager.yaml
+#
+# 8. External Secrets Operator para AWS Secrets Manager:
+#      helm repo add external-secrets https://charts.external-secrets.io
+#      helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace

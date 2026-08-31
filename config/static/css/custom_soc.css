@@ -1,0 +1,15 @@
+/* =========================================================
+DISEÑO EXCLUSIVO - CSIRT FEMSA
+   ========================================================= */
+
+/* 1. Este código toma tu logo y lo vuelve BLANCO PURO brillante */
+.brand-link .brand-image {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+/* 2. Ajustamos un poco el tamaño para que se vea más elegante */
+.brand-link .brand-image {
+    max-height: 40px !important;
+    margin-left: 10px;
+}

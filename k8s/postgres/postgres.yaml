@@ -1,0 +1,142 @@
+# ============================================================
+# Kubernetes PostgreSQL — StatefulSet + PVC + Service
+# Registro MRI — FEMSA Salud CSIRT
+# ============================================================
+
+# ─── PersistentVolumeClaim ──────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mri-postgres-pvc
+  namespace: registro-mri
+  labels:
+    app: mri-postgres
+  annotations:
+    # En AWS EKS: usar gp3 EBS StorageClass (ver k8s/aws/)
+    # storageClassName: gp3
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard  # Para local (Docker Desktop / Minikube)
+  # storageClassName: gp3   # Descomentar para AWS EKS
+  resources:
+    requests:
+      storage: 20Gi  # Ajustar según necesidades
+
+---
+# ─── StatefulSet ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mri-postgres
+  namespace: registro-mri
+  labels:
+    app: mri-postgres
+    app.kubernetes.io/name: registro-mri
+    component: database
+spec:
+  serviceName: mri-postgres-service
+  replicas: 1  # PostgreSQL single-instance para local; usar RDS en AWS
+  selector:
+    matchLabels:
+      app: mri-postgres
+  template:
+    metadata:
+      labels:
+        app: mri-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mri-postgres-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mri-postgres-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mri-postgres-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: TZ
+              value: "America/Santiago"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "mri_user", "-d", "registro_mri"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "mri_user", "-d", "registro_mri"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: mri-postgres-pvc
+        - name: init-script
+          configMap:
+            name: mri-postgres-init
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 999  # postgres group
+
+---
+# ─── ConfigMap con script de inicialización ────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mri-postgres-init
+  namespace: registro-mri
+data:
+  01-init.sql: |
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+    COMMENT ON DATABASE registro_mri IS 'Registro MRI - FEMSA Salud CSIRT';
+    SELECT 'Base de datos inicializada correctamente.' as status;
+
+---
+# ─── Service (ClusterIP — solo accesible dentro del cluster) ─
+apiVersion: v1
+kind: Service
+metadata:
+  name: mri-postgres-service
+  namespace: registro-mri
+  labels:
+    app: mri-postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: mri-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres

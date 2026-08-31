@@ -1,0 +1,15 @@
+# ============================================================
+# Kubernetes Namespace — Registro MRI
+# FEMSA Salud CSIRT
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: registro-mri
+  labels:
+    app.kubernetes.io/name: registro-mri
+    app.kubernetes.io/managed-by: kubectl
+    environment: production
+    team: csirt-femsasalud
+  annotations:
+    description: "Registro de Monitoreo y Respuesta a Incidentes - FEMSA Salud CSIRT"

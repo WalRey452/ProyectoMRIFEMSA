@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="100" fill="#272257"/>
+  
+  <!-- Outer ring - largest -->
+  <circle cx="100" cy="100" r="82" fill="none" stroke="white" stroke-width="3.5" stroke-dasharray="60 12 80 12 100 12" stroke-linecap="round"/>
+  
+  <!-- Ring 2 -->
+  <circle cx="100" cy="100" r="68" fill="none" stroke="white" stroke-width="3.5" stroke-dasharray="50 10 70 10 90 10" stroke-linecap="round" stroke-dashoffset="20"/>
+  
+  <!-- Ring 3 -->
+  <circle cx="100" cy="100" r="54" fill="none" stroke="white" stroke-width="3.5" stroke-dasharray="40 8 60 8 80 8" stroke-linecap="round"/>
+  
+  <!-- Ring 4 -->
+  <circle cx="100" cy="100" r="40" fill="none" stroke="white" stroke-width="3.5" stroke-dasharray="30 7 50 7 70 7" stroke-linecap="round" stroke-dashoffset="15"/>
+  
+  <!-- Ring 5 - smallest before lock -->
+  <circle cx="100" cy="100" r="28" fill="none" stroke="white" stroke-width="3" stroke-dasharray="20 6 40 6" stroke-linecap="round"/>
+
+  <!-- Padlock icon centered -->
+  <!-- Lock body -->
+  <rect x="87" y="102" width="26" height="20" rx="3" ry="3" fill="white"/>
+  <!-- Lock shackle -->
+  <path d="M91 102 L91 95 Q100 85 109 95 L109 102" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Keyhole -->
+  <circle cx="100" cy="111" r="3" fill="#272257"/>
+  <rect x="98.5" y="111" width="3" height="5" rx="1" fill="#272257"/>
+</svg>

@@ -1,0 +1,47 @@
+# ============================================================
+# .gitignore — Registro MRI / FEMSA Salud CSIRT
+# ============================================================
+
+# ─── Variables de entorno y secretos ────────────────────────
+# NUNCA versionar archivos .env que contengan credenciales reales.
+# Usar .env.example con valores de ejemplo para documentar la estructura.
+.env
+.env.local
+.env.*.local
+.env.production
+
+# ─── Dependencias Node.js ───────────────────────────────────
+node_modules/
+node_modules_corrupt*/
+node-portable/
+
+# ─── Compilacion TypeScript ─────────────────────────────────
+dist/
+build/
+
+# ─── Entornos virtuales Python ──────────────────────────────
+venv/
+__pycache__/
+*.pyc
+
+# ─── Archivos de log ────────────────────────────────────────
+*.log
+logs/
+
+# ─── Archivos subidos por usuarios ──────────────────────────
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ─── Caches Angular ─────────────────────────────────────────
+frontend/.angular/
+
+# ─── Archivos de sistema operativo ──────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDEs y editores ─────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.user

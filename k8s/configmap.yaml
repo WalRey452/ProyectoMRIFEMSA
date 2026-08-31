@@ -1,0 +1,73 @@
+# ============================================================
+# Kubernetes ConfigMap — Registro MRI
+# Variables de entorno no sensibles para el backend
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mri-backend-config
+  namespace: registro-mri
+  labels:
+    app: mri-backend
+    app.kubernetes.io/name: registro-mri
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  API_PREFIX: "api/v1"
+
+  # Base de datos
+  DB_HOST: "mri-postgres-service"
+  DB_PORT: "5432"
+  DB_DATABASE: "registro_mri"
+  DB_SCHEMA: "public"
+  DB_SSL: "true"  # Siempre true en producción (AWS RDS)
+
+  # Redis
+  REDIS_HOST: "mri-redis-service"
+  REDIS_PORT: "6379"
+  REDIS_TTL: "3600"
+
+  # Storage
+  UPLOAD_DIR: "/app/uploads"
+  MAX_FILE_SIZE_MB: "50"
+
+  # Seguridad
+  PASSWORD_EXPIRY_DAYS: "60"
+  PASSWORD_HISTORY_COUNT: "5"
+  MAX_LOGIN_ATTEMPTS: "5"
+  LOCKOUT_DURATION_MINUTES: "30"
+  SESSION_TIMEOUT_MINUTES: "60"
+
+  # JWT
+  JWT_EXPIRATION: "8h"
+  JWT_REFRESH_EXPIRATION: "7d"
+
+  # CORS — Actualizar con el dominio real en producción
+  FRONTEND_URL: "https://mri.femsasalud.com"
+  CORS_ORIGINS: "https://mri.femsasalud.com"
+
+  # SMTP
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_FROM: "CSIRT FEMSA Salud <csirt@femsasalud.com>"
+
+  # Rate limiting
+  THROTTLE_TTL: "60"
+  THROTTLE_LIMIT: "100"
+
+  # Zona horaria
+  TZ: "America/Santiago"
+
+  # Puppeteer
+  PUPPETEER_NO_SANDBOX: "true"
+
+---
+# ConfigMap para el frontend (Nginx)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mri-frontend-config
+  namespace: registro-mri
+data:
+  # Valores de configuración del frontend
+  APP_ENV: "production"

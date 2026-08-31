@@ -1,0 +1,204 @@
+# ============================================================
+# Kubernetes Backend NestJS — Deployment + Service + HPA
+# Registro MRI — FEMSA Salud CSIRT
+# ============================================================
+
+# ─── PersistentVolumeClaim para uploads ────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mri-uploads-pvc
+  namespace: registro-mri
+  labels:
+    app: mri-backend
+spec:
+  accessModes:
+    - ReadWriteMany  # Necesario para múltiples réplicas
+  storageClassName: standard  # Para local; usar efs-sc en AWS EKS
+  # storageClassName: efs-sc  # AWS EFS para ReadWriteMany en EKS
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# ─── Deployment ────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mri-backend
+  namespace: registro-mri
+  labels:
+    app: mri-backend
+    app.kubernetes.io/name: registro-mri
+    component: api
+spec:
+  replicas: 2  # Alta disponibilidad con 2 réplicas
+  selector:
+    matchLabels:
+      app: mri-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: mri-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/api/v1/metrics"
+    spec:
+      # Distribuir réplicas en distintos nodos
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [mri-backend]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: backend
+          image: your-registry/registro-mri-backend:latest
+          # En AWS ECR: image: 123456789.dkr.ecr.us-east-1.amazonaws.com/registro-mri-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+          # Variables desde ConfigMap
+          envFrom:
+            - configMapRef:
+                name: mri-backend-config
+          # Variables sensibles desde Secrets
+          env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: JWT_SECRET
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: JWT_REFRESH_SECRET
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: REDIS_PASSWORD
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: SMTP_HOST
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: SMTP_USER
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: mri-backend-secrets
+                  key: SMTP_PASS
+          volumeMounts:
+            - name: uploads-storage
+              mountPath: /app/uploads
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]  # Grace period para draining
+      volumes:
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: mri-uploads-pvc
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+
+---
+# ─── Service ───────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: mri-backend-service
+  namespace: registro-mri
+  labels:
+    app: mri-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: mri-backend
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+
+---
+# ─── HorizontalPodAutoscaler ───────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mri-backend-hpa
+  namespace: registro-mri
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mri-backend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

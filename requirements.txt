@@ -1,0 +1,150 @@
+# =============================================================
+# requirements.txt — Registro MRI / FEMSA Salud CSIRT
+# =============================================================
+# Este archivo documenta todos los requisitos de sistema,
+# herramientas y versiones necesarias para desplegar
+# la aplicación Registro MRI en un servidor de producción.
+#
+# Plataforma: Linux (Ubuntu 22.04 LTS recomendado) o Windows Server 2022
+# Proveedor DB: Neon.tech (PostgreSQL 16 serverless)
+# =============================================================
+
+# -------------------------------------------------------------
+# RUNTIME — Node.js
+# -------------------------------------------------------------
+# Versión mínima requerida: 20 LTS (Iron)
+# Versión probada: 20.18.0
+# Descarga: https://nodejs.org/en/download
+node>=20.18.0
+
+# npm (incluido con Node.js)
+# Versión mínima: 10.x
+npm>=10.8.0
+
+# -------------------------------------------------------------
+# BACKEND — Dependencias de producción (NestJS)
+# -------------------------------------------------------------
+# Framework principal
+@nestjs/core==11.x
+@nestjs/common==11.x
+@nestjs/platform-express==11.x
+
+# Base de datos
+typeorm==0.3.x
+@nestjs/typeorm==11.x
+@neondatabase/serverless==1.x
+pg==8.x
+ws==8.x
+
+# Autenticación y seguridad
+@nestjs/jwt==11.x
+@nestjs/passport==11.x
+passport==0.7.x
+passport-jwt==4.x
+passport-local==1.x
+bcryptjs==2.x
+helmet==7.x
+
+# Configuración y utilidades
+@nestjs/config==4.x
+@nestjs/schedule==6.x
+@nestjs/serve-static==5.x
+@nestjs/swagger==11.x
+@nestjs/throttler==6.x
+class-validator==0.14.x
+class-transformer==0.5.x
+rxjs==7.x
+uuid==14.x
+
+# Correo y documentos
+nodemailer==9.x
+handlebars==4.x
+multer==2.x
+
+# Rendimiento
+compression==1.x
+date-fns==3.x
+date-fns-tz==3.x
+
+# -------------------------------------------------------------
+# FRONTEND — Dependencias de producción (Angular)
+# -------------------------------------------------------------
+# Framework
+@angular/core==19.x
+@angular/common==19.x
+@angular/router==19.x
+@angular/forms==19.x
+@angular/platform-browser==19.x
+
+# UI y gráficos
+@angular/material==19.x
+ng-apexcharts==1.x
+ngx-toastr==19.x
+
+# -------------------------------------------------------------
+# HERRAMIENTAS DE BUILD (solo en ambiente CI/CD)
+# -------------------------------------------------------------
+# TypeScript (compilación)
+typescript>=5.3.0
+
+# Angular CLI (build de producción)
+@angular/cli==19.x
+
+# NestJS CLI (build de producción)
+@nestjs/cli==11.x
+
+# -------------------------------------------------------------
+# BASE DE DATOS
+# -------------------------------------------------------------
+# Proveedor: Neon.tech (PostgreSQL 16 serverless)
+# URL: https://console.neon.tech
+# Tipo de conexión: WebSocket (vía @neondatabase/serverless)
+# SSL: requerido (rejectUnauthorized según entorno)
+# Región recomendada para AWS: us-east-1
+
+# -------------------------------------------------------------
+# INFRAESTRUCTURA (Despliegue en AWS)
+# -------------------------------------------------------------
+# Opción A — EC2 + PM2
+#   - EC2: t3.small o superior (2 vCPU, 2 GB RAM mínimo)
+#   - SO: Ubuntu 22.04 LTS
+#   - PM2: gestor de procesos Node.js (npm install -g pm2)
+#   - Nginx: reverse proxy (puerto 80/443 → 3000 backend, 4200/dist frontend)
+#   - Certbot: certificado SSL gratuito (Let's Encrypt)
+#
+# Opción B — Elastic Beanstalk
+#   - Platform: Node.js 20 running on 64bit Amazon Linux 2023
+#   - Instance type: t3.small
+#
+# Opción C — ECS (Docker)
+#   - Imagen base: node:20-alpine
+#   - Dockerfile incluido en backend/ y frontend/
+#
+# -------------------------------------------------------------
+# PUERTOS DE LA APLICACIÓN
+# -------------------------------------------------------------
+# Backend (NestJS API):  3000 (interno) → 80/443 (público via Nginx)
+# Frontend (Angular):   Servir dist/ como archivos estáticos via Nginx
+#                       O ejecutar en 4200 en modo dev
+#
+# -------------------------------------------------------------
+# VARIABLES DE ENTORNO REQUERIDAS EN PRODUCCIÓN
+# -------------------------------------------------------------
+# Ver README.md sección "Variables de Entorno" para la lista completa.
+# Las variables NUNCA deben estar en el código fuente ni en Git.
+# Usar AWS Secrets Manager, Parameter Store o un archivo .env
+# en la instancia del servidor con permisos restringidos (chmod 600).
+#
+# -------------------------------------------------------------
+# COMANDOS DE DESPLIEGUE
+# -------------------------------------------------------------
+# Backend:
+#   npm install --production
+#   npm run build
+#   node dist/main.js
+#   (o con PM2: pm2 start dist/main.js --name registro-mri-api)
+#
+# Frontend:
+#   npm install
+#   npm run build
+#   # Copiar dist/registro-mri/ al directorio de Nginx

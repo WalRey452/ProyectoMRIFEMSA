@@ -1,0 +1,156 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div style="padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #004b87; padding-bottom: 15px;">
+        <h1 style="color: #004b87; margin: 0; font-size: 24px; font-weight: bold;">
+            Dashboard de Operaciones de Seguridad
+        </h1>
+        
+        <form method="GET" style="display: flex; gap: 15px; align-items: center; margin: 0;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="color: #555; font-weight: bold; margin: 0;">Desde:</label>
+                <input type="date" name="fecha_inicio" value="{{ fecha_inicio|default:'' }}" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="color: #555; font-weight: bold; margin: 0;">Hasta:</label>
+                <input type="date" name="fecha_fin" value="{{ fecha_fin|default:'' }}" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <button type="submit" style="background-color: #004b87; color: white; border: none; padding: 6px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                Filtrar Datos
+            </button>
+            <a href="{% url 'exportar_dashboard' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}" 
+               style="background-color: #6c757d; color: white; border: none; padding: 6px 15px; border-radius: 4px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                📄 Exportar Informe
+            </a>
+        </form>
+    </div>
+    
+    <div style="display: flex; gap: 25px;">
+        
+        <div style="flex: 3; display: flex; flex-direction: column; gap: 25px;">
+            
+            <div style="display: flex; gap: 20px; justify-content: space-between;">
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1; text-align: center; border-left: 5px solid #ffc107;">
+                    <h3 style="margin: 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Casos Abiertos</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0 0 0; color: #333;">{{ incidentes_abiertos }}</p>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1; text-align: center; border-left: 5px solid #dc3545;">
+                    <h3 style="margin: 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Riesgo Crítico</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0 0 0; color: #dc3545;">{{ incidentes_criticos }}</p>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1; text-align: center; border-left: 5px solid #28a745;">
+                    <h3 style="margin: 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Eventos (Hoy)</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0 0 0; color: #28a745;">{{ eventos_hoy }}</p>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1; text-align: center; border-left: 5px solid #004b87;">
+                    <h3 style="margin: 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Total Global</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0 0 0; color: #004b87;">{{ total_incidentes }}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 20px;">
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1;">
+                    <h3 style="color: #333; font-size: 16px; margin-top: 0; margin-bottom: 20px; text-align: center;">Clasificación por Severidad</h3>
+                    <div style="height: 300px; display: flex; justify-content: center;">
+                        <canvas id="chartSeveridad"></canvas>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 2;">
+                    <h3 style="color: #333; font-size: 16px; margin-top: 0; margin-bottom: 20px; text-align: center;">Top Vectores de Amenaza</h3>
+                    <div style="height: 300px;">
+                        <canvas id="chartTipos"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="flex: 1; background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-height: 520px; overflow-y: auto;">
+            <h3 style="color: #004b87; font-size: 16px; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                Trazabilidad (En Vivo)
+            </h3>
+            
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                {% for cambio in historial_cambios %}
+                <li style="padding: 12px 0; border-bottom: 1px solid #f9f9f9; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="color: #004b87;">{{ cambio.history_user.username|default:"Sistema Automático"|upper }}</strong>
+                        <span style="color: #888;">{{ cambio.history_date|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div style="color: #444;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; 
+                        {% if cambio.history_type == '+' %}background-color: #28a745;{% elif cambio.history_type == '~' %}background-color: #ffc107;{% else %}background-color: #dc3545;{% endif %} 
+                        margin-right: 5px;"></span>
+                        
+                        {% if cambio.history_type == '+' %}Creación de
+                        {% elif cambio.history_type == '~' %}Actualización en
+                        {% else %}Eliminación de{% endif %}
+                        
+                        <strong>{{ cambio.codigo }}</strong>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="color: #888; font-size: 13px; text-align: center; padding: 20px 0;">
+                    No hay modificaciones recientes registradas.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Configuración Gráfico Severidad
+    const ctxSev = document.getElementById('chartSeveridad').getContext('2d');
+    new Chart(ctxSev, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for item in data_severidad %}"{{ item.severidad }}",{% endfor %}],
+            datasets: [{
+                data: [{% for item in data_severidad %}{{ item.total }},{% endfor %}],
+                backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // Configuración Gráfico Tipos de Ataque
+    const ctxTipos = document.getElementById('chartTipos').getContext('2d');
+    new Chart(ctxTipos, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in data_tipos %}"{{ item.tipo_ataque|truncatechars:20 }}",{% endfor %}],
+            datasets: [{
+                label: 'Volumen de Casos',
+                data: [{% for item in data_tipos %}{{ item.total }},{% endfor %}],
+                backgroundColor: '#004b87',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+            }
+        }
+    });
+</script>
+{% endblock %}
